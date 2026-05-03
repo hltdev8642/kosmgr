@@ -269,25 +269,10 @@ namespace kOSScriptManager
                 }
 
                 var runPath = BuildAbsoluteRunPath(sourceVolume, sourcePath);
-                if (processor.HardDisk != null && sourceVolume != processor.HardDisk)
-                {
-                    if (!TryReadText(sourceVolume, sourcePath, out var externalText, out error))
-                    {
-                        return false;
-                    }
-
-                    runPath = "__kosmgr_run.ks";
-                    if (!TrySaveText(processor.HardDisk, runPath, externalText, out error))
-                    {
-                        return false;
-                    }
-
-                    runPath = BuildAbsoluteRunPath(processor.HardDisk, runPath);
-                }
 
                 var command = debugMode
-                    ? string.Format("print \"[kOSMgr debug] running {0}\". run \"{1}\".", sourcePath, runPath)
-                    : string.Format("run \"{0}\".", runPath);
+                    ? string.Format("print \"[kOSMgr debug] running {0}\". runpath(\"{1}\").", sourcePath, runPath)
+                    : string.Format("runpath(\"{0}\").", runPath);
 
                 SendCommandToTerminal(processor, command);
                 return true;

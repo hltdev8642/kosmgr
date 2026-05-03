@@ -50,6 +50,7 @@ namespace kOSScriptManager
 
         private double nextRefreshTime;
         private bool needsRefresh = true;
+        private bool pendingDeleteConfirm;
 
         public static void EnsureInstance()
         {
@@ -282,9 +283,27 @@ namespace kOSScriptManager
             {
                 RenameOpenFile();
             }
-            if (GUILayout.Button("Delete", GUILayout.Width(75f)))
+            if (pendingDeleteConfirm)
             {
-                DeleteOpenFile();
+                var oldColor = GUI.color;
+                GUI.color = Color.red;
+                if (GUILayout.Button("Confirm?", GUILayout.Width(90f)))
+                {
+                    pendingDeleteConfirm = false;
+                    DeleteOpenFile();
+                }
+                GUI.color = oldColor;
+                if (GUILayout.Button("Cancel", GUILayout.Width(65f)))
+                {
+                    pendingDeleteConfirm = false;
+                }
+            }
+            else
+            {
+                if (GUILayout.Button("Delete", GUILayout.Width(75f)))
+                {
+                    pendingDeleteConfirm = true;
+                }
             }
             if (GUILayout.Button("Run", GUILayout.Width(65f)))
             {
@@ -623,6 +642,7 @@ namespace kOSScriptManager
 
         private void DeleteOpenFile()
         {
+            pendingDeleteConfirm = false;
             if (string.IsNullOrEmpty(selectedFilePath))
             {
                 statusLine = "Select a file first.";
