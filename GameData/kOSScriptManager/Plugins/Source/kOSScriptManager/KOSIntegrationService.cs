@@ -268,7 +268,7 @@ namespace kOSScriptManager
                     processor.TogglePower();
                 }
 
-                var runPath = sourcePath;
+                var runPath = BuildAbsoluteRunPath(sourceVolume, sourcePath);
                 if (processor.HardDisk != null && sourceVolume != processor.HardDisk)
                 {
                     if (!TryReadText(sourceVolume, sourcePath, out var externalText, out error))
@@ -281,11 +281,13 @@ namespace kOSScriptManager
                     {
                         return false;
                     }
+
+                    runPath = BuildAbsoluteRunPath(processor.HardDisk, runPath);
                 }
 
                 var command = debugMode
-                    ? string.Format("print \"[kOSMgr debug] running {0}\". runpath(\"{1}\").", sourcePath, runPath)
-                    : string.Format("runpath(\"{0}\").", runPath);
+                    ? string.Format("print \"[kOSMgr debug] running {0}\". run \"{1}\".", sourcePath, runPath)
+                    : string.Format("run \"{0}\".", runPath);
 
                 SendCommandToTerminal(processor, command);
                 return true;
@@ -410,6 +412,18 @@ namespace kOSScriptManager
             }
 
             return value;
+        }
+
+        private static string BuildAbsoluteRunPath(Volume volume, string path)
+        {
+            var normalized = NormalizePath(path);
+            var volumeType = volume != null ? volume.GetType().Name : string.Empty;
+            if (string.Equals(volumeType, "Archive", StringComparison.OrdinalIgnoreCase))
+            {
+                return "archive:/" + normalized;
+            }
+
+            return "0:/" + normalized;
         }
 
         private static void SendCommandToTerminal(kOSProcessor processor, string command)

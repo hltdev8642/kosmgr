@@ -27,6 +27,10 @@
       <HintPath>$(KSP_ROOT)\KSP_x64_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(KSP_ROOT)\KSP_x64_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>$(KSP_ROOT)\KSP_x64_Data\Managed\UnityEngine.UI.dll</HintPath>
       <Private>false</Private>

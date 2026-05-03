@@ -12,6 +12,7 @@ namespace kOSScriptManager
     {
         private const string EditorControlName = "kOSScriptManager.Editor";
         private const int WindowId = 380914;
+        private const string InputLockName = "kOSScriptManager.WindowLock";
 
         private static KOSScriptManagerController? instance;
 
@@ -31,10 +32,21 @@ namespace kOSScriptManager
         private string editorText = string.Empty;
         private string fileNameInput = "script.ks";
         private string debugOutput = string.Empty;
+        private string partFilter = string.Empty;
+        private bool craftOnlyTagged;
+        private bool craftOnlyProcessors;
 
         private int selectedVolumeIndex;
         private int selectedRightTab;
         private int cursorIndex;
+
+        private bool inputLockActive;
+        private bool isResizing;
+        private Vector2 resizeStartMouse;
+        private Vector2 resizeStartSize;
+        private GUISkin? configuredSkin;
+        private int configuredSkinFontSize = -1;
+        private int configuredTheme = -1;
 
         private double nextRefreshTime;
         private bool needsRefresh = true;
@@ -81,6 +93,7 @@ namespace kOSScriptManager
             GameEvents.onGameSceneLoadRequested.Remove(OnSceneLoadRequested);
 
             RemoveLauncherButton();
+            ReleaseInputLock();
             if (instance == this)
             {
                 instance = null;
@@ -96,8 +109,11 @@ namespace kOSScriptManager
 
             if (!UiStateStore.IsOpen)
             {
+                ReleaseInputLock();
                 return;
             }
+
+            UpdateInputLock();
 
             var now = Planetarium.GetUniversalTime();
             if (!needsRefresh && now < nextRefreshTime)
@@ -120,8 +136,21 @@ namespace kOSScriptManager
                 return;
             }
 
+            var oldMatrix = GUI.matrix;
+            var oldSkin = GUI.skin;
+            var oldColor = GUI.color;
+
+            var scale = Mathf.Clamp(UiStateStore.UiScale, 0.7f, 1.8f);
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
+            GUI.skin = GetConfiguredSkin();
+            GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(UiStateStore.TransparencyPercent / 100f));
+
             UiStateStore.WindowRect = GUILayout.Window(WindowId, UiStateStore.WindowRect, DrawWindow, "kOS Script Manager");
             HandleResize();
+
+            GUI.color = oldColor;
+            GUI.skin = oldSkin;
+            GUI.matrix = oldMatrix;
         }
 
         private void DrawWindow(int id)
@@ -232,6 +261,11 @@ namespace kOSScriptManager
             GUILayout.Label("File", GUILayout.Width(28f));
             fileNameInput = GUILayout.TextField(fileNameInput, GUILayout.MinWidth(180f));
 
+            if (GUILayout.Button("Close", GUILayout.Width(60f)))
+            {
+                CloseOpenFile();
+            }
+
             if (GUILayout.Button("New", GUILayout.Width(70f)))
             {
                 CreateNewFile();
@@ -276,25 +310,36 @@ namespace kOSScriptManager
 
         private void DrawRightPanel()
         {
-            GUILayout.BeginVertical(GUILayout.Width(360f));
+            var rightWidth = UiStateStore.CompactLayout ? 300f : 360f;
+            GUILayout.BeginVertical(GUILayout.Width(rightWidth));
 
-            var tabs = new[] { "Reference", "Craft", "Debug" };
+            var tabs = new[] { "Reference", "Craft", "Debug", "Settings" };
             selectedRightTab = GUILayout.Toolbar(selectedRightTab, tabs);
 
-            UiStateStore.SnippetScroll = GUILayout.BeginScrollView(UiStateStore.SnippetScroll, GUILayout.ExpandHeight(true));
             if (selectedRightTab == 0)
             {
+                UiStateStore.SnippetScroll = GUILayout.BeginScrollView(UiStateStore.SnippetScroll, GUILayout.ExpandHeight(true));
                 DrawReferencePanel();
+                GUILayout.EndScrollView();
             }
             else if (selectedRightTab == 1)
             {
+                UiStateStore.PartsScroll = GUILayout.BeginScrollView(UiStateStore.PartsScroll, GUILayout.ExpandHeight(true));
                 DrawCraftPanel();
+                GUILayout.EndScrollView();
+            }
+            else if (selectedRightTab == 2)
+            {
+                UiStateStore.SnippetScroll = GUILayout.BeginScrollView(UiStateStore.SnippetScroll, GUILayout.ExpandHeight(true));
+                DrawDebugPanel();
+                GUILayout.EndScrollView();
             }
             else
             {
-                DrawDebugPanel();
+                UiStateStore.SnippetScroll = GUILayout.BeginScrollView(UiStateStore.SnippetScroll, GUILayout.ExpandHeight(true));
+                DrawSettingsPanel();
+                GUILayout.EndScrollView();
             }
-            GUILayout.EndScrollView();
 
             GUILayout.EndVertical();
         }
@@ -321,11 +366,26 @@ namespace kOSScriptManager
             var entries = craftTagService.BuildPartList();
             if (entries.Count == 0)
             {
-                GUILayout.Label("No kOS processors/tags found on this craft.");
+                GUILayout.Label("No craft parts found in current scene context.");
                 return;
             }
 
-            foreach (var entry in entries)
+            GUILayout.BeginVertical(HighLogic.Skin.box);
+            GUILayout.Label("All Craft Parts");
+            partFilter = GUILayout.TextField(partFilter ?? string.Empty);
+            GUILayout.BeginHorizontal();
+            craftOnlyTagged = GUILayout.Toggle(craftOnlyTagged, "Only tagged");
+            craftOnlyProcessors = GUILayout.Toggle(craftOnlyProcessors, "Only processors");
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Parts detected: " + entries.Count);
+            GUILayout.EndVertical();
+
+            var filtered = entries.Where(e =>
+                (string.IsNullOrWhiteSpace(partFilter) || e.DisplayName.IndexOf(partFilter, StringComparison.OrdinalIgnoreCase) >= 0) &&
+                (!craftOnlyTagged || !string.IsNullOrWhiteSpace(e.Tag)) &&
+                (!craftOnlyProcessors || e.IsProcessor));
+
+            foreach (var entry in filtered)
             {
                 var key = entry.Part.craftID;
                 if (!partTagEditBuffer.ContainsKey(key))
@@ -335,6 +395,10 @@ namespace kOSScriptManager
 
                 GUILayout.BeginVertical(HighLogic.Skin.box);
                 GUILayout.Label(entry.DisplayName + (entry.IsProcessor ? " [CPU]" : ""));
+                if (!string.IsNullOrWhiteSpace(entry.Tag))
+                {
+                    GUILayout.Label("Existing tag: " + entry.Tag);
+                }
                 partTagEditBuffer[key] = GUILayout.TextField(partTagEditBuffer[key]);
 
                 GUILayout.BeginHorizontal();
@@ -400,6 +464,48 @@ namespace kOSScriptManager
 
             GUILayout.Label("Active CPU terminal output:");
             GUILayout.TextArea(debugOutput, GUILayout.ExpandHeight(true));
+        }
+
+        private void DrawSettingsPanel()
+        {
+            GUILayout.BeginVertical(HighLogic.Skin.box);
+            GUILayout.Label("UI Configuration");
+
+            GUILayout.Label("UI Scale: " + UiStateStore.UiScale.ToString("0.00") + "x");
+            var newScale = GUILayout.HorizontalSlider(UiStateStore.UiScale, 0.7f, 1.8f);
+            if (Math.Abs(newScale - UiStateStore.UiScale) > 0.001f)
+            {
+                UiStateStore.UiScale = newScale;
+                statusLine = "UI scale updated.";
+            }
+
+            GUILayout.Label("Font Size: " + UiStateStore.FontSize);
+            var newFont = Mathf.RoundToInt(GUILayout.HorizontalSlider(UiStateStore.FontSize, 10f, 24f));
+            if (newFont != UiStateStore.FontSize)
+            {
+                UiStateStore.FontSize = newFont;
+                configuredSkin = null;
+                statusLine = "Font size updated.";
+            }
+
+            GUILayout.Label("Transparency: " + Mathf.RoundToInt(UiStateStore.TransparencyPercent) + "%");
+            UiStateStore.TransparencyPercent = GUILayout.HorizontalSlider(UiStateStore.TransparencyPercent, 0f, 100f);
+
+            UiStateStore.CompactLayout = GUILayout.Toggle(UiStateStore.CompactLayout, "Compact layout mode");
+
+            GUILayout.Label("Appearance Theme");
+            var theme = GUILayout.Toolbar(UiStateStore.AppearanceTheme, new[] { "Stock", "Dark", "Mint" });
+            if (theme != UiStateStore.AppearanceTheme)
+            {
+                UiStateStore.AppearanceTheme = theme;
+                configuredSkin = null;
+            }
+
+            GUILayout.Space(8f);
+            GUILayout.Label("Window Behavior");
+            GUILayout.Label("- Resizable from lower-right corner.");
+            GUILayout.Label("- Mouse over this window locks game input to prevent accidental craft edits.");
+            GUILayout.EndVertical();
         }
 
         private void CreateNewFile()
@@ -547,6 +653,16 @@ namespace kOSScriptManager
             }
         }
 
+        private void CloseOpenFile()
+        {
+            selectedFilePath = string.Empty;
+            selectedFileName = string.Empty;
+            fileNameInput = "script.ks";
+            editorText = string.Empty;
+            cursorIndex = 0;
+            statusLine = "Closed current script.";
+        }
+
         private void RunOpenFile(bool debugMode)
         {
             if (string.IsNullOrEmpty(selectedFilePath))
@@ -665,6 +781,18 @@ namespace kOSScriptManager
                 selectedVolumeIndex = 0;
             }
 
+            if (!string.IsNullOrWhiteSpace(UiStateStore.OpenVolumeName))
+            {
+                for (var i = 0; i < volumes.Count; i++)
+                {
+                    if (string.Equals(kosService.DisplayVolumeName(volumes[i]), UiStateStore.OpenVolumeName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectedVolumeIndex = i;
+                        break;
+                    }
+                }
+            }
+
             RefreshDirectoryOnly();
         }
 
@@ -722,10 +850,26 @@ namespace kOSScriptManager
                 return;
             }
 
-            if (e.type == EventType.MouseDrag && resizeRect.Contains(e.mousePosition))
+            if (e.type == EventType.MouseDown && e.button == 0 && resizeRect.Contains(e.mousePosition))
             {
-                UiStateStore.WindowRect.width = Mathf.Max(820f, UiStateStore.WindowRect.width + e.delta.x);
-                UiStateStore.WindowRect.height = Mathf.Max(560f, UiStateStore.WindowRect.height + e.delta.y);
+                isResizing = true;
+                resizeStartMouse = e.mousePosition;
+                resizeStartSize = new Vector2(UiStateStore.WindowRect.width, UiStateStore.WindowRect.height);
+                e.Use();
+                return;
+            }
+
+            if (isResizing && e.type == EventType.MouseDrag)
+            {
+                var delta = e.mousePosition - resizeStartMouse;
+                UiStateStore.WindowRect.width = Mathf.Max(820f, resizeStartSize.x + delta.x);
+                UiStateStore.WindowRect.height = Mathf.Max(560f, resizeStartSize.y + delta.y);
+                e.Use();
+            }
+
+            if (isResizing && (e.rawType == EventType.MouseUp || e.type == EventType.MouseUp))
+            {
+                isResizing = false;
                 e.Use();
             }
         }
@@ -771,6 +915,7 @@ namespace kOSScriptManager
         private void OnToolbarClose()
         {
             UiStateStore.IsOpen = false;
+            ReleaseInputLock();
             SaveUiState();
         }
 
@@ -826,9 +971,108 @@ namespace kOSScriptManager
             return HighLogic.LoadedSceneIsFlight || HighLogic.LoadedSceneIsEditor;
         }
 
+        private void UpdateInputLock()
+        {
+            var shouldLock = IsMouseOverWindow();
+            if (shouldLock && !inputLockActive)
+            {
+                InputLockManager.SetControlLock(ControlTypes.ALLBUTCAMERAS, InputLockName);
+                inputLockActive = true;
+            }
+            else if (!shouldLock && inputLockActive)
+            {
+                ReleaseInputLock();
+            }
+        }
+
+        private void ReleaseInputLock()
+        {
+            if (!inputLockActive)
+            {
+                return;
+            }
+
+            InputLockManager.RemoveControlLock(InputLockName);
+            inputLockActive = false;
+        }
+
+        private bool IsMouseOverWindow()
+        {
+            if (!UiStateStore.IsOpen)
+            {
+                return false;
+            }
+
+            var mouse = Input.mousePosition;
+            var screenTopLeftPos = new Vector2(mouse.x, Screen.height - mouse.y);
+            var scale = Mathf.Clamp(UiStateStore.UiScale, 0.7f, 1.8f);
+            var rect = new Rect(
+                UiStateStore.WindowRect.x * scale,
+                UiStateStore.WindowRect.y * scale,
+                UiStateStore.WindowRect.width * scale,
+                UiStateStore.WindowRect.height * scale);
+
+            return rect.Contains(screenTopLeftPos);
+        }
+
+        private GUISkin GetConfiguredSkin()
+        {
+            if (configuredSkin != null && configuredSkinFontSize == UiStateStore.FontSize && configuredTheme == UiStateStore.AppearanceTheme)
+            {
+                return configuredSkin;
+            }
+
+            configuredSkin = Instantiate(HighLogic.Skin);
+            configuredSkinFontSize = UiStateStore.FontSize;
+            configuredTheme = UiStateStore.AppearanceTheme;
+
+            ApplyFontSize(configuredSkin, configuredSkinFontSize);
+            ApplyTheme(configuredSkin, configuredTheme);
+            return configuredSkin;
+        }
+
+        private static void ApplyFontSize(GUISkin skin, int fontSize)
+        {
+            if (skin == null)
+            {
+                return;
+            }
+
+            fontSize = Mathf.Clamp(fontSize, 10, 24);
+            if (skin.label != null) skin.label.fontSize = fontSize;
+            if (skin.button != null) skin.button.fontSize = fontSize;
+            if (skin.box != null) skin.box.fontSize = fontSize;
+            if (skin.textArea != null) skin.textArea.fontSize = fontSize;
+            if (skin.textField != null) skin.textField.fontSize = fontSize;
+            if (skin.toggle != null) skin.toggle.fontSize = fontSize;
+        }
+
+        private static void ApplyTheme(GUISkin skin, int theme)
+        {
+            if (skin == null)
+            {
+                return;
+            }
+
+            var labelColor = Color.white;
+            if (theme == 1)
+            {
+                labelColor = new Color(0.9f, 0.9f, 0.95f, 1f);
+            }
+            else if (theme == 2)
+            {
+                labelColor = new Color(0.82f, 1f, 0.9f, 1f);
+            }
+
+            if (skin.label != null) skin.label.normal.textColor = labelColor;
+            if (skin.box != null) skin.box.normal.textColor = labelColor;
+            if (skin.button != null) skin.button.normal.textColor = labelColor;
+            if (skin.toggle != null) skin.toggle.normal.textColor = labelColor;
+        }
+
         private void LoadUiState()
         {
-            currentDirectory = UiStateStore.OpenPath ?? string.Empty;
+            currentDirectory = string.Empty;
             editorText = UiStateStore.LastEditorText ?? string.Empty;
             cursorIndex = Mathf.Clamp(UiStateStore.LastCursorIndex, 0, editorText.Length);
             selectedFilePath = UiStateStore.OpenPath ?? string.Empty;
@@ -836,6 +1080,12 @@ namespace kOSScriptManager
             {
                 selectedFileName = System.IO.Path.GetFileName(selectedFilePath);
                 fileNameInput = selectedFileName;
+
+                var slash = selectedFilePath.LastIndexOf('/');
+                if (slash > 0)
+                {
+                    currentDirectory = selectedFilePath.Substring(0, slash);
+                }
             }
         }
 
@@ -844,6 +1094,11 @@ namespace kOSScriptManager
             UiStateStore.OpenPath = selectedFilePath;
             UiStateStore.LastEditorText = editorText;
             UiStateStore.LastCursorIndex = cursorIndex;
+            var volume = GetSelectedVolume();
+            if (volume != null)
+            {
+                UiStateStore.OpenVolumeName = kosService.DisplayVolumeName(volume);
+            }
         }
     }
 }

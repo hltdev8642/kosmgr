@@ -35,12 +35,6 @@ namespace kOSScriptManager
                 var tagModule = part.Modules.OfType<KOSNameTag>().FirstOrDefault();
                 var tag = processor != null ? processor.Tag : (tagModule != null ? tagModule.nameTag : string.Empty);
 
-                var hasInterestingState = processor != null || !string.IsNullOrWhiteSpace(tag);
-                if (!hasInterestingState)
-                {
-                    continue;
-                }
-
                 entries.Add(new CraftPartTagEntry
                 {
                     Part = part,

@@ -71,6 +71,7 @@ UiStateStore.cs
  UnityEngine.AnimationModule.dll
  UnityEngine.CoreModule.dll
  UnityEngine.IMGUIModule.dll
+ UnityEngine.InputLegacyModule.dll
  UnityEngine.UI.dll
 <NUGET>/microsoft.netframework.referenceassemblies.net472/1.0.3/build/.NETFramework/v4.7.2/
  mscorlib.dll
