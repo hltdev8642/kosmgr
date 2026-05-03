@@ -373,10 +373,9 @@ namespace kOSScriptManager
             GUILayout.BeginVertical(HighLogic.Skin.box);
             GUILayout.Label("All Craft Parts");
             partFilter = GUILayout.TextField(partFilter ?? string.Empty);
-            GUILayout.BeginHorizontal();
-            craftOnlyTagged = GUILayout.Toggle(craftOnlyTagged, "Only tagged");
-            craftOnlyProcessors = GUILayout.Toggle(craftOnlyProcessors, "Only processors");
-            GUILayout.EndHorizontal();
+            GUILayout.Label("Filters");
+            craftOnlyTagged = GUILayout.Toggle(craftOnlyTagged, "Show only tagged parts", GUILayout.Height(22f));
+            craftOnlyProcessors = GUILayout.Toggle(craftOnlyProcessors, "Show only kOS processor parts", GUILayout.Height(22f));
             GUILayout.Label("Parts detected: " + entries.Count);
             GUILayout.EndVertical();
 
