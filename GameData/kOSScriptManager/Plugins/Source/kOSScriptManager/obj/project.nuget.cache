@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "3ioBSbPFANs=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\jared\\Documents\\_KSP\\_dev\\kosmgr\\GameData\\kOSScriptManager\\Plugins\\Source\\kOSScriptManager\\kOSScriptManager.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\jared\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "C:\\Users\\jared\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net472\\1.0.3\\microsoft.netframework.referenceassemblies.net472.1.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

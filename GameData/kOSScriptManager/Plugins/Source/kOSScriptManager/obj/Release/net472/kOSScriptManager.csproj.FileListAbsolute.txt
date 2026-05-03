@@ -1,0 +1,7 @@
+C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\obj\Release\net472\kOSScriptManager.csproj.AssemblyReference.cache
+C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\obj\Release\net472\kOSScriptManager.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\obj\Release\net472\kOSScriptManager.csproj.CoreCompileInputs.cache
+C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\bin\Release\net472\kOSScriptManager.dll
+C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\bin\Release\net472\kOSScriptManager.pdb
+C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\obj\Release\net472\kOSScriptManager.dll
+C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\obj\Release\net472\kOSScriptManager.pdb

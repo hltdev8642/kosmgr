@@ -1,0 +1,8 @@
+is_global = true
+build_property.RootNamespace = kOSScriptManager
+build_property.ProjectDir = C:\Users\jared\Documents\_KSP\_dev\kosmgr\GameData\kOSScriptManager\Plugins\Source\kOSScriptManager\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.CsWinRTUseWindowsUIXamlProjections = false
+build_property.EffectiveAnalysisLevelStyle = 
+build_property.EnableCodeStyleSeverity = 
