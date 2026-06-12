@@ -25,6 +25,7 @@
         },
         "frameworks": {
           "net472": {
+            "framework": "net472",
             "targetAlias": "net472",
             "projectReferences": {}
           }
@@ -39,20 +40,13 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "10.0.300"
       },
       "frameworks": {
         "net472": {
+          "framework": "net472",
           "targetAlias": "net472",
-          "dependencies": {
-            "Microsoft.NETFramework.ReferenceAssemblies": {
-              "suppressParent": "All",
-              "target": "Package",
-              "version": "[1.0.3, )",
-              "autoReferenced": true
-            }
-          },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300\\RuntimeIdentifierGraph.json"
         }
       }
     }
